@@ -8,6 +8,31 @@ const tours = JSON.parse(
   fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
 );
 
+// Param middleware for checking if id of tour is present or not
+exports.checkID = (req, res, next, val) => {
+  // returns error if id of tour is not present
+  if (val * 1 > tours.length - 1) {
+    return res.status(404).json({
+      status: 'failure',
+      error: 'invalid ID. Tour not found.',
+    });
+  }
+  // else continue the req-res cycle
+  next();
+};
+
+// Checks if body of the request has name and price members for updation
+exports.checkBody = (req, res, next) => {
+  if (req.body.name && req.body.price) {
+    return next();
+  }
+
+  res.status(400).json({
+    status: 'error',
+    error: 'Please add name and price',
+  });
+};
+
 // Functions for route handling
 exports.getAllTours = (req, res) => {
   // return the previous data in JSend format
@@ -22,15 +47,6 @@ exports.getAllTours = (req, res) => {
 };
 
 exports.getTour = (req, res) => {
-  const id = req.params.id * 1; // clever way to convert string to number
-
-  if (id > tours.length - 1) {
-    return res.status(404).json({
-      status: 'failure',
-      error: 'invalid ID. Tour not found.',
-    });
-  }
-
   const tour = tours.find((el) => el.id === id);
   res.status(200).json({
     status: 'success',
@@ -71,14 +87,6 @@ exports.createTour = (req, res) => {
 };
 
 exports.updateTour = (req, res) => {
-  const id = req.params.id * 1;
-  if (id > tours.length - 1) {
-    return res.status(404).json({
-      status: 'failure',
-      error: 'Invalid ID',
-    });
-  }
-
   res.status(200).json({
     status: 'success',
     message: 'Updated successfully',
@@ -86,14 +94,6 @@ exports.updateTour = (req, res) => {
 };
 
 exports.deleteTour = (req, res) => {
-  const id = req.params.id * 1;
-  if (id > tours.length - 1) {
-    return res.status(404).json({
-      status: 'failure',
-      error: 'Invalid ID',
-    });
-  }
-
   res.status(204).json({
     status: 'success',
     message: 'Updated successfully',

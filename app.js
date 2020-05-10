@@ -1,6 +1,5 @@
 // Builds the express server here
 // Entry point express file is conventionally named app.js
-const fs = require('fs');
 const express = require('express');
 const morgan = require('morgan');
 
@@ -12,6 +11,9 @@ const app = express();
 
 // Add an express middleware to parse the body of requests from JSON to object
 app.use(express.json());
+
+// Express middleware for serving static assets
+app.use(express.static(`${__dirname}/public`));
 
 // Third party middleware morgan to display request data
 app.use(morgan('dev'));
