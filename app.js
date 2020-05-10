@@ -2,12 +2,16 @@
 // Entry point express file is conventionally named app.js
 const fs = require('fs');
 const express = require('express');
+const morgan = require('morgan');
 
 // Initializes the express app
 const app = express();
 
 // Add an express middleware to parse the body of requests from JSON to object
 app.use(express.json());
+
+// Third party middleware morgan to display request data
+app.use(morgan('dev'));
 
 // Custom middleware for attaching current time to requests
 app.use((req, res, next) => {
