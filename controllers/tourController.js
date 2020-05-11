@@ -1,48 +1,109 @@
 // Functions for handling tour routes
-
-// Checks if body of the request has name and price members for updation
-exports.checkBody = (req, res, next) => {
-  if (req.body.name && req.body.price) {
-    return next();
-  }
-
-  res.status(400).json({
-    status: 'error',
-    error: 'Please add name and price',
-  });
-};
+const Tour = require('../models/tourModel');
 
 // Functions for route handling
-exports.getAllTours = (req, res) => {
-  // return the previous data in JSend format
-  res.status(200).json({
-    status: 'success',
-    requestedAt: req.requestTime,
-  });
+
+// Gets all the tours stored in collection
+exports.getAllTours = async (req, res) => {
+  try {
+    // Returns all documents in tour collection as a JS array of objects
+    const tours = await Tour.find();
+
+    res.status(200).json({
+      status: 'success',
+      results: tours.length,
+      data: {
+        tours,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'failure',
+      message: err,
+    });
+  }
 };
 
-exports.getTour = (req, res) => {
-  res.status(200).json({
-    status: 'success',
-  });
+// Gets a tour by the provided Mongo ObjectID
+exports.getTour = async (req, res) => {
+  try {
+    // Finds an individual tour by MongoID
+    const tour = await Tour.findById(req.params.id);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'failure',
+      message: 'Invalid ID',
+    });
+  }
 };
 
-exports.createTour = (req, res) => {
-  res.status(201).json({
-    status: 'success',
-  });
+// Creates a new tour
+exports.createTour = async (req, res) => {
+  // Using try-catch for async-await error handling
+  try {
+    const tour = await Tour.create(req.body);
+
+    // Sends success if document is created successfully
+    res.status(201).json({
+      status: 'success',
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    // Sends a message of failure if any mongoose validation fails
+    res.status(400).json({
+      status: 'failure',
+      message: 'Invalid data!',
+    });
+  }
 };
 
-exports.updateTour = (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'Updated successfully',
-  });
+// Updates a document by id
+exports.updateTour = async (req, res) => {
+  try {
+    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'failure',
+      message: 'Invalid updates',
+    });
+  }
 };
 
-exports.deleteTour = (req, res) => {
-  res.status(204).json({
-    status: 'success',
-    message: 'Updated successfully',
-  });
+// Deletes a tour by id
+exports.deleteTour = async (req, res) => {
+  try {
+    const deletedTour = await Tour.findByIdAndDelete(req.params.id);
+
+    res.status(204).json({
+      status: 'success',
+      data: {
+        tour: deletedTour,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'failure',
+      message: 'Invalid ID!',
+      err,
+    });
+  }
 };
