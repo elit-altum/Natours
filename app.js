@@ -15,8 +15,10 @@ app.use(express.json());
 // Express middleware for serving static assets
 app.use(express.static(`${__dirname}/public`));
 
-// Third party middleware morgan to display request data
-app.use(morgan('dev'));
+// Third party middleware morgan to display request data (only if development mode)
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
 
 // Custom middleware for attaching current time to requests
 app.use((req, res, next) => {
