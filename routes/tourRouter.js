@@ -6,7 +6,7 @@ const tourController = require('../controllers/tourController');
 const router = express.Router();
 
 // Adds a param middleware for checking if id of tour is present or not
-router.param('id', tourController.checkID);
+// router.param('id', tourController.checkID);
 
 // Route chaining by relative URL i.e. relative to /api/v1/tours
 router
