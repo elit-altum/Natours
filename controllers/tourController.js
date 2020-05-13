@@ -1,6 +1,15 @@
 // Functions for handling tour routes
 const Tour = require('../models/tourModel');
 
+// Alias function for top-5-best
+// Prefills some query strings before sending it to getAllTours()
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = '5';
+  req.query.sort = '-ratingsAverage, price';
+  req.query.fields = 'name, summary, price, ratingsAverage, difficulty';
+  next();
+};
+
 // Functions for route handling
 
 // Gets all the tours stored in collection
@@ -33,8 +42,11 @@ exports.getAllTours = async (req, res) => {
 
     // 2. Sorting
     if (req.query.sort) {
+      // Combine the queries using spaces from ','
+      const sortQuery = req.query.sort.split(',').join(' ');
+
       // First sort by the property provided, if not found or two equal documents, put latest first
-      const sortBy = `${req.query.sort} -createdAt`;
+      const sortBy = `${sortQuery} -createdAt`;
       query.sort(sortBy);
     } else {
       query = query.sort('-createdAt');
@@ -134,11 +146,18 @@ exports.updateTour = async (req, res) => {
       runValidators: true,
     });
 
-    res.status(200).json({
-      status: 'success',
-      data: {
-        tour,
-      },
+    if (tour) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          tour,
+        },
+      });
+    }
+
+    res.status(404).send({
+      status: 'failure',
+      message: 'ID Not found',
     });
   } catch (err) {
     res.status(400).json({
@@ -153,16 +172,23 @@ exports.deleteTour = async (req, res) => {
   try {
     const deletedTour = await Tour.findByIdAndDelete(req.params.id);
 
-    res.status(204).json({
-      status: 'success',
-      data: {
-        tour: deletedTour,
-      },
+    if (deletedTour) {
+      return res.status(204).json({
+        status: 'success',
+        data: {
+          tour: deletedTour,
+        },
+      });
+    }
+
+    res.status(404).send({
+      status: 'failure',
+      message: 'ID Not found',
     });
   } catch (err) {
     res.status(400).json({
       status: 'failure',
-      message: 'Invalid ID!',
+      message: 'Invalid ID format!',
       err,
     });
   }
