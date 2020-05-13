@@ -14,15 +14,33 @@ const DB = process.env.DATABASE.replace(
 );
 
 // Connect to the MongoDB host using Mongoose
+// mongoose
+//   .connect(DB, {
+//     useNewUrlParser: true,
+//     useCreateIndex: true,
+//     useFindAndModify: false,
+//     useUnifiedTopology: true,
+//   })
+//   .then(() => {
+//     console.log('MongoDB connected successfully!');
+//   })
+//   .catch((err) => {
+//     console.error('CONNECTION ERROR: ', err);
+//   });
+
+// Connect to local DB
 mongoose
-  .connect(DB, {
+  .connect(process.env.DATABASE_LOCAL, {
+    useUnifiedTopology: true,
     useNewUrlParser: true,
     useCreateIndex: true,
     useFindAndModify: false,
-    useUnifiedTopology: true,
   })
   .then(() => {
-    console.log('MongoDB connected successfully!');
+    console.log('Connected to local db successfully!');
+  })
+  .catch((err) => {
+    console.log('Failed to connect to local db: ', err);
   });
 
 // Starts the express app on a port

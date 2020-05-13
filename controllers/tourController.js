@@ -5,9 +5,69 @@ const Tour = require('../models/tourModel');
 
 // Gets all the tours stored in collection
 exports.getAllTours = async (req, res) => {
+  // . Response to client
   try {
-    // Returns all documents in tour collection as a JS array of objects
-    const tours = await Tour.find();
+    // Create a new object for filtering tours.
+    const filterObj = { ...req.query };
+
+    // BUILDING QUERY
+
+    // 1a. Filtering
+    // Delete the keys not concerned with filtering
+    const excludedFields = ['page', 'sort', 'limit', 'fields'];
+    excludedFields.forEach((el) => delete filterObj[el]);
+
+    // 1b. Advanced filtering
+    // Modify the filter object to include $ sign before query selectors
+    // We can't use $ direct in query strings as spl characters in URL's shouldn't be promoted
+    let filterString = JSON.stringify(filterObj);
+
+    // Replace every selector -> $selector using regexp
+    filterString = filterString.replace(
+      /\b(gte|gt|lte|lt)\b/g,
+      (match) => `$${match}`
+    );
+
+    // Query is an object returned by Mongoose which when awaited, returns the data from db
+    let query = Tour.find(JSON.parse(filterString));
+
+    // 2. Sorting
+    if (req.query.sort) {
+      // First sort by the property provided, if not found or two equal documents, put latest first
+      const sortBy = `${req.query.sort} -createdAt`;
+      query.sort(sortBy);
+    } else {
+      query = query.sort('-createdAt');
+    }
+
+    // 3. Projecting - Including only specified values in response
+    if (req.query.fields) {
+      const fields = req.query.fields.split(',').join(' ');
+      query = query.select(fields);
+    } else {
+      query = query.select('-__v');
+    }
+
+    // 4. Pagination
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit * 1 || 50;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+
+    if (req.query.page) {
+      // Gets total number of documents in the collection (not query)
+      const totalNumberOfTours = await Tour.countDocuments();
+
+      // If we skip more than all documents present, we return an error
+      if (skip >= totalNumberOfTours) {
+        throw new Error('This page has no documents!');
+      }
+    }
+
+    // Returns all matching documents in tour collection as a JS array of objects
+    // Gets data to send back to client
+    const tours = await query;
 
     res.status(200).json({
       status: 'success',
