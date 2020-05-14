@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
 
 // Experimental Mongoose model and schema
 const tourSchema = new mongoose.Schema(
@@ -8,6 +9,7 @@ const tourSchema = new mongoose.Schema(
       required: [true, 'A tour must have a name'],
       unique: true,
     },
+    slug: String,
     duration: {
       type: Number,
       required: [true, 'Tour duration is required'],
@@ -47,6 +49,10 @@ const tourSchema = new mongoose.Schema(
       trim: true,
       required: [true, 'Tour summary is required'],
     },
+    secret: {
+      type: Boolean,
+      default: false,
+    },
     description: {
       type: String,
       trim: true,
@@ -66,6 +72,29 @@ tourSchema.virtual('weekDuration').get(function () {
   return this.duration / 7;
 });
 
+// Document middleware before document save
+tourSchema.pre('save', function (next) {
+  this.slug = slugify(this.name);
+  next();
+});
+
+// Query middleware for removing secret tours from any find() query
+tourSchema.pre(/^find/, function (next) {
+  // 'this' is the query on which find() is operated on
+  // we manipulate 'this' to remove those docs having secret: true
+  this.find({ secret: { $ne: true } });
+  next();
+});
+
+// Aggregation middleware for removing secret tours from every pipeline
+tourSchema.pre('aggregate', function (next) {
+  // this.pipeline() returns the corresponding pipeline as an array
+  // Adds a $match stage to the start of the pipeline for removing secret tours
+  this.pipeline().unshift({
+    $match: { secret: { $ne: true } },
+  });
+  next();
+});
 // Create a model from the schema
 const Tour = mongoose.model('Tour', tourSchema);
 
