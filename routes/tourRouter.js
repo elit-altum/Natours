@@ -14,6 +14,9 @@ router
   .route('/top-5-best')
   .get(tourController.aliasTopTours, tourController.getAllTours);
 
+router.route('/tour-stats').get(tourController.getTourStats);
+router.route('/busy-months/:year').get(tourController.getBusyMonths);
+
 // Route chaining by relative URL i.e. relative to /api/v1/tours
 router
   .route('/')
