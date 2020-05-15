@@ -1,10 +1,12 @@
 // Builds the express server here
 // Entry point express file is conventionally named app.js
+
 const express = require('express');
 const morgan = require('morgan');
 
 // Custom class for making more descriptive errors
 const AppError = require('./utils/appError');
+// Controller/middleware for handling errors
 const errorHandler = require('./controllers/errorController');
 
 const tourRouter = require('./routes/tourRouter');
@@ -35,7 +37,7 @@ app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 
 // 404 handling for any other routes
-app.use('*', (req, res, next) => {
+app.all('*', (req, res, next) => {
   // Create an error object and send it to error handle midware via next()
   const err = new AppError('This path does not exist on this server!', 404);
   next(err);
