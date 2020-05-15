@@ -23,7 +23,7 @@ exports.getAllTours = async (req, res) => {
       .fieldsLimit()
       .paginate();
 
-    // Awaits the query so it returns the filtered/sorted etc documents as a JS array of objects
+    // Awaits the query so it returns the filtered, sorted etc documents as a JS array of objects
     const tours = await features.query;
 
     res.status(200).json({

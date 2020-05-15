@@ -3,6 +3,10 @@
 const express = require('express');
 const morgan = require('morgan');
 
+// Custom class for making more descriptive errors
+const AppError = require('./utils/appError');
+const errorHandler = require('./controllers/errorController');
+
 const tourRouter = require('./routes/tourRouter');
 const userRouter = require('./routes/userRouter');
 
@@ -29,5 +33,15 @@ app.use((req, res, next) => {
 // attach routers to express app
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
+
+// 404 handling for any other routes
+app.use('*', (req, res, next) => {
+  // Create an error object and send it to error handle midware via next()
+  const err = new AppError('This path does not exist on this server!', 404);
+  next(err);
+});
+
+// Global error handling middleware
+app.use(errorHandler);
 
 module.exports = app;
