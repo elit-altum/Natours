@@ -12,6 +12,6 @@ handler. It would then pass these parameters to the child function which actuall
 
 module.exports = (fn) => {
   return (req, res, next) => {
-    fn(req, res, next).catch((err) => next(err));
+    fn(req, res).catch((err) => next(err));
   };
 };

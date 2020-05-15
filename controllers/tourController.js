@@ -1,7 +1,17 @@
 // Functions for handling tour routes
+
+// Imports the tour model, it is a reference to entire tours collection
 const Tour = require('../models/tourModel');
+
+// A custom class to handle API features like filtering, sorting etc.
 const APIFeatures = require('../utils/apiFeatures');
+
+// Custom wrapper fn for route handlers, to use express middleware error handling
+// instead of try-catch error handling
 const catchAsync = require('../utils/catchAsync');
+
+// Custom error class for handling of errors
+const AppError = require('../utils/appError');
 
 // Alias function for top-5-best
 // Prefills some query strings before sending it to getAllTours()
@@ -40,6 +50,11 @@ exports.getTour = catchAsync(async (req, res) => {
   // Finds an individual tour by MongoID
   const tour = await Tour.findById(req.params.id);
 
+  if (!tour) {
+    // As AppError extends Error(), this is similar to throw new Error()
+    throw new AppError('Tour not found!', 404);
+  }
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -68,18 +83,15 @@ exports.updateTour = catchAsync(async (req, res) => {
     runValidators: true,
   });
 
-  if (tour) {
-    return res.status(200).json({
-      status: 'success',
-      data: {
-        tour,
-      },
-    });
+  if (!tour) {
+    throw new AppError('Tour not found!', 404);
   }
 
-  res.status(404).send({
-    status: 'failure',
-    message: 'ID Not found',
+  res.status(200).json({
+    status: 'success',
+    data: {
+      tour,
+    },
   });
 });
 
@@ -87,18 +99,15 @@ exports.updateTour = catchAsync(async (req, res) => {
 exports.deleteTour = catchAsync(async (req, res) => {
   const deletedTour = await Tour.findByIdAndDelete(req.params.id);
 
-  if (deletedTour) {
-    return res.status(204).json({
-      status: 'success',
-      data: {
-        tour: deletedTour,
-      },
-    });
+  if (!deletedTour) {
+    throw new AppError('Tour not found!', 404);
   }
 
-  res.status(404).json({
-    status: 'fail',
-    error: 'No such tour found!',
+  res.status(204).json({
+    status: 'success',
+    data: {
+      tour: deletedTour,
+    },
   });
 });
 
