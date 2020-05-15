@@ -34,6 +34,12 @@ const tourSchema = new mongoose.Schema(
     rating: {
       type: Number,
       default: 0,
+      validate: {
+        validator: function (val) {
+          return val >= 0 && val <= 5;
+        },
+        message: 'Rating cannot be greater than 5',
+      },
     },
     createdAt: {
       type: Date,
