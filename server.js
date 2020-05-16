@@ -4,6 +4,8 @@ dotenv.config({
   path: './config.env',
 });
 
+require('./utils/uncaughtErrors');
+
 const mongoose = require('mongoose');
 const app = require('./app');
 
@@ -24,9 +26,6 @@ const DB = process.env.DATABASE.replace(
 //   .then(() => {
 //     console.log('MongoDB connected successfully!');
 //   })
-//   .catch((err) => {
-//     console.error('CONNECTION ERROR: ', err);
-//   });
 
 // Connect to local DB
 mongoose
@@ -38,13 +37,22 @@ mongoose
   })
   .then(() => {
     console.log('Connected to local db successfully!');
-  })
-  .catch((err) => {
-    console.log('Failed to connect to local db: ', err);
   });
 
 // Starts the express app on a port
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+
+// 'server' is a reference to the node server created by express
+const server = app.listen(port, () => {
   console.log(`App is running on port ${port}`);
+});
+
+// For promise rejects w/o a catch block = unhandledRejection
+process.on('unhandledRejection', (err) => {
+  console.log(`${err.name}: ${err.message}`);
+  // closes the server
+  server.close(() => {
+    // exits from the node app/processes
+    process.exit(1);
+  });
 });
