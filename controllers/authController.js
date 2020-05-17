@@ -75,7 +75,7 @@ exports.login = catchAsync(async (req, res) => {
   });
 });
 
-// Middleware for protected routes
+// Middleware for protected routes: User authentication
 exports.protect = catchAsync(async (req, res, next) => {
   let token = '';
 
@@ -121,3 +121,18 @@ exports.protect = catchAsync(async (req, res, next) => {
   req.user = currentUser; // Attach user data to request if someone wants to use.
   next();
 });
+
+// Middleware for protected routes: User authorization
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      // if role doesn't match send Forbidden Error
+      throw new AppError(
+        'You do not have permission to perform this action',
+        403
+      );
+    }
+
+    next();
+  };
+};

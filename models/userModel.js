@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
     validate: [validator.isEmail, 'Please enter a valid email!'],
   },
   photo: String,
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'guide'],
+    default: 'user',
+  },
   password: {
     type: String,
     required: [true, 'Please provide a password'],
@@ -67,11 +72,12 @@ userSchema.methods.changedPasswordDate = function (JWTIssue) {
   if (this.passwordChangedAt) {
     // convert changed at date to timestamp
     changeTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+
+    // Returns TRUE if JWT is not valid i.e. password was changed after JWT issue
+    return changeTimestamp < JWTIssue;
   }
 
-  // Returns TRUE if JWT is not valid i.e. password was changed after JWT issue
-  console.log(changeTimestamp, JWTIssue);
-  return changeTimestamp < JWTIssue;
+  return false;
 };
 
 const User = mongoose.model('User', userSchema);
