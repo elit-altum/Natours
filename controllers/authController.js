@@ -1,4 +1,5 @@
 // Authentication controllers
+const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 
 const User = require('../models/userModel');
@@ -6,8 +7,9 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 
 // Generates a JWT
-const generateJwt = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateJwt = (id, address) => {
+  console.log(process.env.JWT_EXPIRES_IN);
+  return jwt.sign({ id, address }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
@@ -28,8 +30,10 @@ exports.signup = catchAsync(async (req, res) => {
     passwordConfirm: req.body.passwordConfirm,
   });
 
+  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
   // Issue a JWT after user signs up
-  const token = generateJwt(newUser._id);
+  const token = generateJwt(newUser._id, ip);
 
   // Delete the password field for security
   newUser.password = undefined;
@@ -59,14 +63,61 @@ exports.login = catchAsync(async (req, res) => {
 
   // If matching email and passwords aren't found
   if (!user || !isMatch) {
-    throw new AppError('Invalid username or password!', 400);
+    throw new AppError('Invalid username or password!', 401);
   }
 
   // Generates JWT for the user
-  const token = generateJwt(user._id);
+  const token = generateJwt(user._id, ip);
 
   res.status(200).json({
     status: 'success',
     token,
   });
+});
+
+// Middleware for protected routes
+exports.protect = catchAsync(async (req, res, next) => {
+  let token = '';
+
+  // 1. Verify if authorization token is present and is in right format
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    // Extracts the token
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    throw new AppError('Please login or sign up!', 401);
+  }
+
+  // 2. Verify the token signature and payload data
+
+  // jwt.verify uses a callback but we promisify it so it returns a promise instead
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+  // 3. Verify if user still exists in db
+  const currentUser = await User.findById(decoded.id);
+  if (!currentUser) {
+    throw new AppError('This user no longer exists. Try again.', 401);
+  }
+
+  // 4. Verify if user changed his password after JWT issue
+  if (currentUser.changedPasswordDate(decoded.iat)) {
+    throw new AppError(
+      'You recently updated your password. Please login again',
+      401
+    );
+  }
+
+  // 5. Verify if IP address is same as token
+  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  if (ip != decoded.address) {
+    throw new AppError('This session is not valid. Please login again!');
+  }
+
+  // If all checks passed, User is authenticated.
+  req.user = currentUser; // Attach user data to request if someone wants to use.
+  next();
 });

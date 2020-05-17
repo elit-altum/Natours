@@ -35,6 +35,16 @@ const handleValidationErrorDB = (err) => {
   return new AppError(message, 400);
 };
 
+// Handling JWT errors for invalid tokens
+const handleJWTError = () => {
+  return new AppError('Invalid session. Please login again!', 401);
+};
+
+// Handling JWt error for expired token
+const handleJWTExpire = () => {
+  return new AppError('Your session has expired. Please login again!', 401);
+};
+
 // Sending comprehensive errors for developers in dev environment
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
@@ -55,7 +65,6 @@ const sendErrorProd = (err, res) => {
     });
   } else {
     // For uncaught errors - bugs which we can't rectify
-    console.log(err);
     res.status(err.statusCode).json({
       status: 500,
       message: 'Something went very wrong!',
@@ -67,21 +76,28 @@ const sendErrorProd = (err, res) => {
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
+
   // Ends the req-res cycle by returning an error to client
   if (process.env.NODE_ENV == 'development') {
     sendErrorDev(err, res);
   } else {
     // Error copy
     let errorCopy = { ...err };
-    // For cast type error
+
+    // For different types of error
     if (errorCopy.name == 'CastError') {
       errorCopy = handleCastErrorDB(errorCopy);
-    }
-    if (errorCopy.code == 11000) {
+    } else if (errorCopy.code == 11000) {
       errorCopy = handleDuplicateFields(errorCopy);
-    }
-    if (errorCopy.name == 'ValidationError') {
+    } else if (errorCopy.name == 'ValidationError') {
       errorCopy = handleValidationErrorDB(errorCopy);
+    } else if (errorCopy.name == 'JsonWebTokenError') {
+      errorCopy = handleJWTError();
+    } else if (errorCopy.name == 'TokenExpiredError') {
+      errorCopy = handleJWTExpire();
+    } else {
+      // every other error which we don't catch explicitly
+      return sendErrorProd(err, res);
     }
     sendErrorProd(errorCopy, res);
   }

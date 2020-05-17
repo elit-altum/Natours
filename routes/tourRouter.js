@@ -1,6 +1,7 @@
 // Router for handling tour routes
 const express = require('express');
 const tourController = require('../controllers/tourController');
+const authController = require('../controllers/authController');
 
 // Create a new router instance
 const router = express.Router();
@@ -20,7 +21,7 @@ router.route('/busy-months/:year').get(tourController.getBusyMonths);
 // Route chaining by relative URL i.e. relative to /api/v1/tours
 router
   .route('/')
-  .get(tourController.getAllTours)
+  .get(authController.protect, tourController.getAllTours)
   .post(tourController.createTour);
 
 router

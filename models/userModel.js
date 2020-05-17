@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
       message: 'The passwords do not match!',
     },
   },
+  passwordChangedAt: Date,
 });
 
 // Document middleware for password hashing before save
@@ -48,15 +49,29 @@ userSchema.pre('save', async function (next) {
 
   // Remove the passwordConfirm field
   this.passwordConfirm = undefined;
+  next();
 });
 
-// Instance methods for password comparison
+// Instance method for password comparison
 userSchema.methods.comparePassword = async function (
   candidatePassword,
   hashedPassword
 ) {
   // Checks if the provided password is same as hashed password
   return await bcrypt.compare(candidatePassword, hashedPassword);
+};
+
+// Instance method to check if password has changed after JWT issue
+userSchema.methods.changedPasswordDate = function (JWTIssue) {
+  let changeTimestamp = 0;
+  if (this.passwordChangedAt) {
+    // convert changed at date to timestamp
+    changeTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+  }
+
+  // Returns TRUE if JWT is not valid i.e. password was changed after JWT issue
+  console.log(changeTimestamp, JWTIssue);
+  return changeTimestamp < JWTIssue;
 };
 
 const User = mongoose.model('User', userSchema);
