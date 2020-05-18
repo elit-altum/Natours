@@ -1,10 +1,13 @@
 // Authentication controllers
+
+const crypto = require('crypto');
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const sendEmail = require('../utils/email');
 
 // Generates a JWT
 const generateJwt = (id, address) => {
@@ -122,9 +125,11 @@ exports.protect = catchAsync(async (req, res, next) => {
   next();
 });
 
-// Middleware for protected routes: User authorization
+// Function for protected routes: User authorization
 exports.restrictTo = (...roles) => {
+  // Returns a middleware fn to check if a user role matches or not
   return (req, res, next) => {
+    // req.user is attached by the authentication midware
     if (!roles.includes(req.user.role)) {
       // if role doesn't match send Forbidden Error
       throw new AppError(
@@ -136,3 +141,85 @@ exports.restrictTo = (...roles) => {
     next();
   };
 };
+
+// For generating a password reset request
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // 1. Check if user is in db through his email
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    throw new AppError('No user found with that email!', 404);
+  }
+
+  // 2. Generate a reset token
+  const resetToken = user.generatePasswordResetToken();
+
+  // This method updates some DB values as well so we need to update it
+  await user.save({ validateBeforeSave: false });
+
+  // 3. Send email to the client with password reset link
+  const resetUrl = `${req.protocol}://${req.get(
+    'host'
+  )}/api/v1/users/resetPassword/${resetToken}`;
+
+  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm 
+  to: ${resetUrl} \n You can ignore this email safely if you made no such requests.`;
+
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: 'Password reset (expires in 10 minutes)',
+      message,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `Password reset instructions have been sent to: ${user.email}`,
+    });
+  } catch (err) {
+    // If failure to send reset email remove the fields for reset
+    user.passwordResetToken = undefined;
+    user.passwordResetExpire = undefined;
+
+    await user.save({ validateBeforeSave: false });
+    throw new AppError('Unable to send reset email. Please try again later!');
+  }
+});
+
+// For resetting user password
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  const resetToken = req.params.token;
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex'); // Hash the provided token
+
+  // 1. Find the user based on token provided and check if it has expired
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new AppError('This token is invalid or has expired!', 400);
+  }
+
+  // 2. Update the password, passwordChangedAt field for this user
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpire = undefined;
+
+  await user.save(); // Mongoose validators will check if password == passwordConfirm
+
+  // 3. Log in the user, send back a JWT
+  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  // Generates JWT for the user
+  const token = generateJwt(user._id, ip);
+
+  res.status(200).json({
+    status: 'success',
+    token,
+  });
+});

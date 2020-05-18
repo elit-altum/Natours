@@ -18,4 +18,8 @@ router
   .get(userController.getUser)
   .patch(userController.updateUser);
 
+// Routes for password reset
+router.post('/forgotPassword', authController.forgotPassword);
+router.patch('/resetPassword/:token', authController.resetPassword);
+
 module.exports = router;
