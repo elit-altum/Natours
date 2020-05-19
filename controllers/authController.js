@@ -69,6 +69,7 @@ exports.login = catchAsync(async (req, res) => {
     throw new AppError('Invalid username or password!', 401);
   }
 
+  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   // Generates JWT for the user
   const token = generateJwt(user._id, ip);
 
@@ -213,6 +214,34 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   await user.save(); // Mongoose validators will check if password == passwordConfirm
 
   // 3. Log in the user, send back a JWT
+  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  // Generates JWT for the user
+  const token = generateJwt(user._id, ip);
+
+  res.status(200).json({
+    status: 'success',
+    token,
+  });
+});
+
+// For changing user password on his request
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // 1. Get POSTed user
+  const user = await User.findById(req.user._id).select('+password');
+
+  // 2. Check if current password is correct
+  if (!user.comparePassword(req.body.oldPassword, user.password)) {
+    throw new AppError('This is the wrong password. Permission denied.', 400);
+  }
+
+  // 3. Update password
+  user.password = req.body.newPassword;
+  user.passwordConfirm = req.body.newPasswordConfirm;
+
+  await user.save(); // always use save() as update() does not run validators!
+
+  // 4. Send is new JWT for login
   let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   // Generates JWT for the user
