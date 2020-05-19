@@ -19,8 +19,20 @@ router.patch(
   authController.updatePassword
 );
 
+// Deleting a user
+router
+  .route('/deleteMe')
+  .delete(authController.protect, userController.deleteMe);
+
 // Route chaining by relative URL i.e. relative to /api/v1/tours
-router.route('/').get(userController.getUsers).post(userController.createUser);
+router
+  .route('/')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    userController.getUsers
+  )
+  .post(userController.createUser);
 
 // Route chaining for updating personal info
 router

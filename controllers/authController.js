@@ -10,10 +10,29 @@ const AppError = require('../utils/appError');
 const sendEmail = require('../utils/email');
 
 // Generates a JWT
-const generateJwt = (id, address) => {
-  console.log(process.env.JWT_EXPIRES_IN);
-  return jwt.sign({ id, address }, process.env.JWT_SECRET, {
+const generateJwt = (id, address, res) => {
+  // 1. Creates a JWT
+  const token = jwt.sign({ id, address }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+
+  // 2. Creates a cookie for the JWT
+  const cookieOptions = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
+    httpOnly: true,
+  };
+
+  if (process.env.NODE_ENV == 'production') {
+    cookieOptions.secure = true;
+  }
+
+  // 3. Send the cookie to client as well as server response
+  res.cookie('jwt', token, cookieOptions);
+  res.status(200).json({
+    status: 'success',
+    token,
   });
 };
 
@@ -36,18 +55,7 @@ exports.signup = catchAsync(async (req, res) => {
   let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   // Issue a JWT after user signs up
-  const token = generateJwt(newUser._id, ip);
-
-  // Delete the password field for security
-  newUser.password = undefined;
-
-  res.status(201).send({
-    status: 'success',
-    token,
-    data: {
-      user: newUser,
-    },
-  });
+  generateJwt(newUser._id, ip, res);
 });
 
 // For logging in existing users
@@ -69,14 +77,8 @@ exports.login = catchAsync(async (req, res) => {
     throw new AppError('Invalid username or password!', 401);
   }
 
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  // Generates JWT for the user
-  const token = generateJwt(user._id, ip);
-
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
+  // Generates and sends JWT to the user
+  generateJwt(user._id, req.userIp, res);
 });
 
 // Middleware for protected routes: User authentication
@@ -116,8 +118,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // 5. Verify if IP address is same as token
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  if (ip != decoded.address) {
+  if (req.userIp != decoded.address) {
     throw new AppError('This session is not valid. Please login again!');
   }
 
@@ -214,15 +215,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   await user.save(); // Mongoose validators will check if password == passwordConfirm
 
   // 3. Log in the user, send back a JWT
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-  // Generates JWT for the user
-  const token = generateJwt(user._id, ip);
-
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
+  generateJwt(user._id, req.userIp, res);
 });
 
 // For changing user password on his request
@@ -245,10 +238,5 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   // Generates JWT for the user
-  const token = generateJwt(user._id, ip);
-
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
+  generateJwt(user._id, req.userIp, res);
 });

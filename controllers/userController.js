@@ -16,12 +16,15 @@ const filterObject = (obj, ...allowedFields) => {
   return newObj;
 };
 
-exports.getUsers = (req, res) => {
-  res.status(500).json({
-    status: 'failure',
-    error: 'This route is under maintenance',
+exports.getUsers = catchAsync(async (req, res) => {
+  const users = await User.find();
+  res.status(200).json({
+    status: 'success',
+    data: {
+      users,
+    },
   });
-};
+});
 
 exports.getUser = (req, res) => {
   res.status(500).json({
@@ -44,6 +47,7 @@ exports.updateUser = (req, res) => {
   });
 };
 
+// For updating a user's un-sensitive data (not password)
 exports.updateMe = catchAsync(async (req, res, next) => {
   // 1. Deny access if user tries to update his password
   if (req.body.password || req.body.passwordConfirm) {
@@ -57,7 +61,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   const updateObj = filterObject(req.body, 'name', 'email');
 
   // 3. Update the user
-  // For un-sensitive data we can use .update()
+  // For un-sensitive data we use .update()
   const updatedUser = await User.findByIdAndUpdate(req.user._id, updateObj, {
     new: true,
     runValidators: true,
@@ -68,5 +72,17 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     data: {
       user: updatedUser,
     },
+  });
+});
+
+// For deleting a user (marking as unactive)
+exports.deleteMe = catchAsync(async (req, res, next) => {
+  const user = await User.findByIdAndUpdate(req.user.id, {
+    active: false,
+  });
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
   });
 });
