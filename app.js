@@ -5,6 +5,9 @@ const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
 // Custom class for making more descriptive errors
 const AppError = require('./utils/appError');
@@ -25,7 +28,7 @@ app.use(helmet());
 // For use of IP with Heroku, ngnix etc.
 app.set('trust proxy', 1);
 
-// Global Middleware for rate limiting
+// Middleware for rate limiting
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
@@ -50,6 +53,25 @@ app.use((req, res, next) => {
 
 // Express middleware to parse body of requests from JSON to object
 app.use(express.json());
+
+// Middleware for NoSQL injection sanitization
+app.use(mongoSanitize());
+
+// Middleware for XSS sanitizing
+app.use(xss());
+
+// Middleware for preventing parameter pollution
+app.use(
+  hpp({
+    whitelist: [
+      'duration',
+      'price',
+      'ratingsQuantity',
+      'maxGroupSize',
+      'difficulty',
+    ],
+  })
+);
 
 // Express middleware for serving static assets
 app.use(express.static(`${__dirname}/public`));
