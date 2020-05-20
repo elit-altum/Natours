@@ -67,6 +67,35 @@ const tourSchema = new mongoose.Schema(
     imageCover: String,
     images: [String],
     startDates: [Date],
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point'],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+    },
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point'],
+        },
+        coordinates: [Number],
+        address: String,
+        description: String,
+        day: Number,
+      },
+    ],
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     toJSON: { virtuals: true },
@@ -90,6 +119,18 @@ tourSchema.pre(/^find/, function (next) {
   // 'this' is the query on which find() is operated on
   // we manipulate 'this' to remove those docs having secret: true
   this.find({ secret: { $ne: true } });
+  next();
+});
+
+// Query middleware for populating 'guides' from users
+tourSchema.pre(/^find/, function (next) {
+  // Populate the guides field with documents whose id is stored, from the User collection.
+  // and remove the passwordChangedAt and __v fields.
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt',
+  });
+
   next();
 });
 
