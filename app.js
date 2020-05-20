@@ -16,6 +16,7 @@ const errorHandler = require('./controllers/errorController');
 
 const tourRouter = require('./routes/tourRouter');
 const userRouter = require('./routes/userRouter');
+const reviewRouter = require('./routes/reviewRouter');
 
 // Initializes the express app
 const app = express();
@@ -81,6 +82,7 @@ app.use(express.static(`${__dirname}/public`));
 // attach routers to express app
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/reviews', reviewRouter);
 
 // 404 handling for any other routes
 app.all('*', (req, res, next) => {
