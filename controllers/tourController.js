@@ -9,9 +9,10 @@ const APIFeatures = require('../utils/apiFeatures');
 // Custom wrapper fn for route handlers, to use express middleware error handling
 // instead of try-catch error handling
 const catchAsync = require('../utils/catchAsync');
-
 // Custom error class for handling of errors
 const AppError = require('../utils/appError');
+// Generic handler functions
+const factory = require('./handlerFactory');
 
 // Alias function for top-5-best
 // Prefills some query strings before sending it to getAllTours()
@@ -25,91 +26,15 @@ exports.aliasTopTours = (req, res, next) => {
 // Functions for route handling
 
 // Gets all the tours stored in collection
-exports.getAllTours = catchAsync(async (req, res) => {
-  // . Response to client
-  const features = new APIFeatures(Tour.find(), req.query)
-    .sort()
-    .filter()
-    .fieldsLimit()
-    .paginate();
-
-  // Awaits the query so it returns the filtered, sorted etc documents as a JS array of objects
-  const tours = await features.query;
-
-  res.status(200).json({
-    status: 'success',
-    results: tours.length,
-    data: {
-      tours,
-    },
-  });
-});
-
-// Gets a tour by the provided Mongo ObjectID
-exports.getTour = catchAsync(async (req, res) => {
-  // Finds an individual tour by MongoID and populates its reviews field
-  const tour = await Tour.findById(req.params.id).populate('reviews');
-
-  if (!tour) {
-    // As AppError extends Error(), this is similar to throw new Error()
-    throw new AppError('Tour not found!', 404);
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-});
-
-// Creates a new tour
-exports.createTour = catchAsync(async (req, res) => {
-  const tour = await Tour.create(req.body);
-
-  // Sends success if document is created successfully
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-});
-
+exports.getAllTours = factory.getAll(Tour);
 // Updates a document by id
-exports.updateTour = catchAsync(async (req, res) => {
-  const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!tour) {
-    throw new AppError('Tour not found!', 404);
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-});
-
+exports.updateTour = factory.updateOne(Tour);
 // Deletes a tour by id
-exports.deleteTour = catchAsync(async (req, res) => {
-  const deletedTour = await Tour.findByIdAndDelete(req.params.id);
-
-  if (!deletedTour) {
-    throw new AppError('Tour not found!', 404);
-  }
-
-  res.status(204).json({
-    status: 'success',
-    data: {
-      tour: deletedTour,
-    },
-  });
-});
+exports.deleteTour = factory.deleteOne(Tour);
+// Creates a new tour
+exports.createTour = factory.createOne(Tour);
+// Gets a tour by the provided Mongo ObjectID
+exports.getTour = factory.getOne(Tour, { path: 'reviews' });
 
 // Aggregation pipelines to get stats on documents
 exports.getTourStats = catchAsync(async (req, res) => {
@@ -186,7 +111,7 @@ exports.getBusyMonths = catchAsync(async (req, res) => {
     },
     {
       $sort: {
-        // Sorts results in desc order on basis of most tours starting
+        // Sorts results in desc order on basis of max tours starting
         startingTours: -1,
       },
     },

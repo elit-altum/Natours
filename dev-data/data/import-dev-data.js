@@ -7,10 +7,16 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 
 const Tour = require('../../models/tourModel');
+const User = require('../../models/userModel');
+const Review = require('../../models/reviewModel');
 
-const filePath = `${__dirname}/tours.json`;
+const toursFilePath = `${__dirname}/tours.json`;
+const reviewsFilePath = `${__dirname}/reviews.json`;
+const usersFilePath = `${__dirname}/users.json`;
 
-const tours = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+const tours = JSON.parse(fs.readFileSync(toursFilePath, 'utf-8'));
+const reviews = JSON.parse(fs.readFileSync(reviewsFilePath, 'utf-8'));
+const users = JSON.parse(fs.readFileSync(usersFilePath, 'utf-8'));
 
 // Connect to MongoDB
 const dbPath = process.env.DATABASE.replace(
@@ -51,7 +57,9 @@ if (process.argv[3] === '--local') {
 // Add the files to the collection
 const addFiles = async () => {
   try {
-    const res = await Tour.create(tours);
+    await Tour.create(tours);
+    await User.create(users, { validateBeforeSave: false });
+    await Review.create(reviews);
     console.log('Added data successfully!');
   } catch (err) {
     console.log('Failed to add data : ', err);
@@ -64,7 +72,9 @@ const addFiles = async () => {
 // Delete all files from the collection
 const deleteFiles = async () => {
   try {
-    const res = await Tour.deleteMany();
+    await Tour.deleteMany();
+    await Review.deleteMany();
+    await User.deleteMany();
     console.log('Deleted successfully!');
   } catch (err) {
     console.log('Process failed!');

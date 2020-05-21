@@ -2,6 +2,7 @@
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const factory = require('./handlerFactory');
 
 // Sanitiser to filter only allowed fields from req object
 const filterObject = (obj, ...allowedFields) => {
@@ -16,38 +17,36 @@ const filterObject = (obj, ...allowedFields) => {
   return newObj;
 };
 
-exports.getUsers = catchAsync(async (req, res) => {
-  const users = await User.find();
+// Gets all the users on db
+exports.getUsers = factory.getAll(User);
+// Gets a particular user from db
+exports.getUser = factory.getOne(User);
+// For updating a user data by the admin
+exports.updateUser = factory.updateOne(User);
+// For actually deleting a user from db (admin action only)
+exports.deleteUser = factory.deleteOne(User);
+
+// Redirect to /signup page
+exports.createUser = (req, res) => {
+  res.status(400).json({
+    status: 'error',
+    error: 'Please use /signup instead!',
+  });
+};
+
+// For getting info of current user
+exports.getMe = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
   res.status(200).json({
     status: 'success',
     data: {
-      users,
+      user,
     },
   });
 });
 
-exports.getUser = (req, res) => {
-  res.status(500).json({
-    status: 'failure',
-    error: 'This route is under maintenance',
-  });
-};
-
-exports.createUser = (req, res) => {
-  res.status(500).json({
-    status: 'failure',
-    error: 'This route is under maintenance',
-  });
-};
-
-exports.updateUser = (req, res) => {
-  res.status(500).json({
-    status: 'failure',
-    error: 'This route is under maintenance',
-  });
-};
-
-// For updating a user's un-sensitive data (not password)
+// For updating a user's un-sensitive data (not password) by the user itself
 exports.updateMe = catchAsync(async (req, res, next) => {
   // 1. Deny access if user tries to update his password
   if (req.body.password || req.body.passwordConfirm) {
@@ -75,7 +74,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   });
 });
 
-// For deleting a user (marking as unactive)
+// For deleting a user by the user itself (marking as unactive)
 exports.deleteMe = catchAsync(async (req, res, next) => {
   const user = await User.findByIdAndUpdate(req.user.id, {
     active: false,

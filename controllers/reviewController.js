@@ -3,24 +3,14 @@
 const Review = require('../models/reviewModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const factory = require('./handlerFactory');
 
 // Gets all reviews
-exports.getAllReviews = catchAsync(async (req, res, next) => {
-  // If user specifies a tour id, gets reviews for that tour only else brings all reviews for all tours
-  let filter = {};
-  if (req.params.tourId) {
-    filter.id = req.params.tourId;
-  }
-
-  const reviews = await Review.find(filter);
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      reviews,
-    },
-  });
-});
+exports.getAllReviews = factory.getAll(Review);
+// Deletes review by its id
+exports.deleteReview = factory.deleteOne(Review);
+// Updates review by its id
+exports.updateReview = factory.updateOne(Review);
 
 // Creates a new review
 exports.createReview = catchAsync(async (req, res, next) => {

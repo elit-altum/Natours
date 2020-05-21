@@ -81,6 +81,7 @@ userSchema.pre('save', function (next) {
   this.passwordChangedAt = time;
   next();
 });
+
 // Instance method for password comparison
 userSchema.methods.comparePassword = async function (
   candidatePassword,
