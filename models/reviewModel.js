@@ -42,10 +42,12 @@ reviewSchema.pre(/^find/, function (next) {
     select: 'name photo',
   });
 
-  this.populate({
-    path: 'tour',
-    select: 'name',
-  });
+  // Not populating the tour as this data will already be present on the page where the review will be at.
+
+  // this.populate({
+  //   path: 'tour',
+  //   select: 'name',
+  // });
   next();
 });
 

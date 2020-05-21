@@ -47,8 +47,8 @@ exports.getAllTours = catchAsync(async (req, res) => {
 
 // Gets a tour by the provided Mongo ObjectID
 exports.getTour = catchAsync(async (req, res) => {
-  // Finds an individual tour by MongoID
-  const tour = await Tour.findById(req.params.id);
+  // Finds an individual tour by MongoID and populates its reviews field
+  const tour = await Tour.findById(req.params.id).populate('reviews');
 
   if (!tour) {
     // As AppError extends Error(), this is similar to throw new Error()

@@ -103,9 +103,16 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
-// Populating and creating the virtual property
+// Create and get data for a virtual property
 tourSchema.virtual('weekDuration').get(function () {
   return this.duration / 7;
+});
+
+// Creating a virtual property for reviews having parent reference to this tour (for virtual populate)
+tourSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
 });
 
 // Document middleware before document save
