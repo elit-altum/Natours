@@ -3,9 +3,6 @@
 // Imports the tour model, it is a reference to entire tours collection
 const Tour = require('../models/tourModel');
 
-// A custom class to handle API features like filtering, sorting etc.
-const APIFeatures = require('../utils/apiFeatures');
-
 // Custom wrapper fn for route handlers, to use express middleware error handling
 // instead of try-catch error handling
 const catchAsync = require('../utils/catchAsync');
@@ -113,6 +110,78 @@ exports.getBusyMonths = catchAsync(async (req, res) => {
       $sort: {
         // Sorts results in desc order on basis of max tours starting
         startingTours: -1,
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      stats,
+    },
+  });
+});
+
+// For getting all tours within a radius
+// route: /tours-within/233/center/28.7041,77.1025/unit/mi
+exports.getToursWithin = catchAsync(async (req, res, next) => {
+  const { distance, latlng, unit } = req.params;
+
+  const [lat, lng] = latlng.split(',');
+
+  if (!lat || !lng) {
+    throw new AppError('Please add coordinates in form of lat,lng.', 400);
+  }
+
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+  // Geo-spatial queries
+  const tours = await Tour.find({
+    startLocation: {
+      $geoWithin: {
+        $centerSphere: [[lng, lat], radius],
+      },
+    },
+  });
+
+  res.status(200).json({
+    status: 'success',
+    results: tours.length,
+    data: {
+      tours,
+    },
+  });
+});
+
+// For getting distance from all the tours
+exports.getTourDistances = catchAsync(async (req, res, next) => {
+  const { latlng, unit } = req.params;
+
+  const [lat, lng] = latlng.split(',');
+
+  // for miles conversion
+  const multiplier = unit === 'mi' ? 0.000621371 : 0.001;
+
+  if (!lat || !lng) {
+    throw new AppError('Please add coordinates in form of lat,lng.', 400);
+  }
+
+  // Aggregation pipeline for tours and distances
+  const stats = await Tour.aggregate([
+    {
+      $geoNear: {
+        near: {
+          type: 'Point',
+          coordinates: [lng * 1, lat * 1],
+        },
+        distanceField: 'distance',
+        // distance is provided in metres
+        distanceMultiplier: multiplier,
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        distance: 1,
       },
     },
   ]);

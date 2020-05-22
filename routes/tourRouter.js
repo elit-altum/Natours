@@ -26,6 +26,16 @@ router
     tourController.getBusyMonths
   );
 
+// Route for getting all tours within a radius (geo-spatial data)
+router
+  .route('/tours-within/:distance/center/:latlng/unit/:unit')
+  .get(tourController.getToursWithin);
+
+// Route for getting distances to all the tours from specified location
+router
+  .route('/distances/:latlng/unit/:unit')
+  .get(tourController.getTourDistances);
+
 // Route chaining by relative URL i.e. relative to /api/v1/tours
 router
   .route('/')

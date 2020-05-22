@@ -2,6 +2,7 @@
 
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+// A custom class to handle API features like filtering, sorting etc.
 const APIFeatures = require('../utils/apiFeatures');
 
 // 1. For deleting a document from a model

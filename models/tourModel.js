@@ -131,7 +131,7 @@ tourSchema.pre('save', function (next) {
 // Indexing for faster queries
 tourSchema.index({ price: 1, ratingsAverage: -1 });
 tourSchema.index({ slug: 1 });
-
+tourSchema.index({ startLocation: '2dsphere' });
 // Query middleware for removing secret tours from any find() query
 tourSchema.pre(/^find/, function (next) {
   // 'this' is the query on which find() is operated on
@@ -152,15 +152,16 @@ tourSchema.pre(/^find/, function (next) {
   next();
 });
 
-// Aggregation middleware for removing secret tours from every pipeline
-tourSchema.pre('aggregate', function (next) {
-  // this.pipeline() returns the corresponding pipeline as an array
-  // Adds a $match stage to the start of the pipeline for removing secret tours
-  this.pipeline().unshift({
-    $match: { secret: { $ne: true } },
-  });
-  next();
-});
+// Example Aggregation middleware for removing secret tours from every pipeline
+// tourSchema.pre('aggregate', function (next) {
+//   // this.pipeline() returns the corresponding pipeline as an array
+//   // Adds a $match stage to the start of the pipeline for removing secret tours
+//   this.pipeline().unshift({
+//     $match: { secret: { $ne: true } },
+//   });
+//   next();
+// });
+
 // Create a model from the schema
 const Tour = mongoose.model('Tour', tourSchema);
 
