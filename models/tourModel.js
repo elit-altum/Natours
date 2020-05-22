@@ -26,6 +26,13 @@ const tourSchema = new mongoose.Schema(
     ratingsAverage: {
       type: Number,
       default: 0,
+      min: [0, 'Should at least be 0'],
+      max: [5, 'Should be lesser than equal to 5'],
+      set: (val) => {
+        // setter fn which runs everytime a value is being set for this field.
+        // 'val' = new value being added. The returned value is the one which is actually set.
+        return Math.round(val * 10) / 10; // 4.666 -> round(46.66) -> 47 -> 4.7
+      },
     },
     ratingsQuantity: {
       type: String,
@@ -120,6 +127,10 @@ tourSchema.pre('save', function (next) {
   this.slug = slugify(this.name);
   next();
 });
+
+// Indexing for faster queries
+tourSchema.index({ price: 1, ratingsAverage: -1 });
+tourSchema.index({ slug: 1 });
 
 // Query middleware for removing secret tours from any find() query
 tourSchema.pre(/^find/, function (next) {

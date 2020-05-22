@@ -10,9 +10,9 @@ const AppError = require('../utils/appError');
 const sendEmail = require('../utils/email');
 
 // Generates a JWT
-const generateJwt = (id, address, res) => {
+const generateJwt = (user, address, res) => {
   // 1. Creates a JWT
-  const token = jwt.sign({ id, address }, process.env.JWT_SECRET, {
+  const token = jwt.sign({ id: user._id, address }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
@@ -33,6 +33,9 @@ const generateJwt = (id, address, res) => {
   res.status(200).json({
     status: 'success',
     token,
+    data: {
+      user,
+    },
   });
 };
 
@@ -55,7 +58,7 @@ exports.signup = catchAsync(async (req, res) => {
   let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   // Issue a JWT after user signs up
-  generateJwt(newUser._id, ip, res);
+  generateJwt(newUser, ip, res);
 });
 
 // For logging in existing users
@@ -78,7 +81,7 @@ exports.login = catchAsync(async (req, res) => {
   }
 
   // Generates and sends JWT to the user
-  generateJwt(user._id, req.userIp, res);
+  generateJwt(user, req.userIp, res);
 });
 
 // Middleware for protected routes: User authentication
@@ -215,7 +218,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   await user.save(); // Mongoose validators will check if password == passwordConfirm
 
   // 3. Log in the user, send back a JWT
-  generateJwt(user._id, req.userIp, res);
+  generateJwt(user, req.userIp, res);
 });
 
 // For changing user password on his request
@@ -238,5 +241,5 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   // Generates JWT for the user
-  generateJwt(user._id, req.userIp, res);
+  generateJwt(user, req.userIp, res);
 });
