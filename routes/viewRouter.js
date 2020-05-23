@@ -7,6 +7,6 @@ const router = express.Router();
 // Render pug templates
 
 router.get('/', viewController.getOverview);
-router.get('/tour', viewController.getTour);
+router.get('/tour/:slug', viewController.getTour);
 
 module.exports = router;
