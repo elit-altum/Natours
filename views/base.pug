@@ -14,14 +14,15 @@ html
 
   body
 
-  // HEADER
-  include _header
+    // HEADER
+    include _header
 
-  // CONTENT
-  block content
-    h1 This is base content
+    // CONTENT
+    block content
+      h1 This is base content
 
-  // FOOTER
-  include _footer
+    // FOOTER
+    include _footer
 
-  script(src='/js/mapbox.js')
+    block footerScripts
+      script(src='https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js')

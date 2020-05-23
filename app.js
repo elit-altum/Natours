@@ -1,4 +1,4 @@
-// Builds the express server here
+// Builds the express server
 // Entry point express file is conventionally named app.js
 
 const path = require('path');
@@ -9,6 +9,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const cookieParser = require('cookie-parser');
 
 // Custom class for making more descriptive errors
 const AppError = require('./utils/appError');
@@ -46,23 +47,11 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Morgan to display request data (only in development mode)
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
-
-// Custom middleware for attaching current time and user ip to requests
-app.use((req, res, next) => {
-  req.requestTime = new Date().toISOString();
-
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  req.userIp = ip;
-
-  next();
-});
-
 // Express middleware to parse body of requests from JSON to object
 app.use(express.json());
+
+// Express middleware to parse cookie of requests from JSON to object
+app.use(cookieParser());
 
 // Middleware for NoSQL injection sanitization
 app.use(mongoSanitize());
@@ -82,6 +71,21 @@ app.use(
     ],
   })
 );
+
+// Morgan to display request data (only in development mode)
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
+
+// Custom middleware for attaching current time and user ip to requests
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+
+  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  req.userIp = ip;
+
+  next();
+});
 
 // 2. ATTACHING ROUTES
 

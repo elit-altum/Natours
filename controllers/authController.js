@@ -39,7 +39,7 @@ const generateJwt = (user, address, res) => {
   });
 };
 
-// For signing in new users
+// 1. For signing in new users
 exports.signup = catchAsync(async (req, res) => {
   /*
   Only use those properties we want the user to specify. They shouldn't add any properties of
@@ -61,7 +61,7 @@ exports.signup = catchAsync(async (req, res) => {
   generateJwt(newUser, ip, res);
 });
 
-// For logging in existing users
+// 2. For logging in existing users
 exports.login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
 
@@ -72,11 +72,15 @@ exports.login = catchAsync(async (req, res) => {
   // Select password as it is a unselected field
   const user = await User.findOne({ email }).select('+password');
 
+  if (!user) {
+    throw new AppError('Invalid username or password!', 401);
+  }
+
   // Compare user password with the hashed password
   const isMatch = await user.comparePassword(password, user.password);
 
   // If matching email and passwords aren't found
-  if (!user || !isMatch) {
+  if (!isMatch) {
     throw new AppError('Invalid username or password!', 401);
   }
 
@@ -84,17 +88,22 @@ exports.login = catchAsync(async (req, res) => {
   generateJwt(user, req.userIp, res);
 });
 
-// Middleware for protected routes: User authentication
+// 3. Middleware for protected routes: User authentication
 exports.protect = catchAsync(async (req, res, next) => {
   let token = '';
 
   // 1. Verify if authorization token is present and is in right format
   if (
+    // If present in req header (usually by postman)
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     // Extracts the token
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    // If present as cookies (sent by a browser)
+
+    token = req.cookies.jwt;
   }
 
   if (!token) {
@@ -127,6 +136,43 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // If all checks passed, User is authenticated.
   req.user = currentUser; // Attach user data to request if someone wants to use.
+  next();
+});
+
+// 4. Middleware to check if a user is logged in (for accessing views)
+exports.isLoggedIn = catchAsync(async (req, res, next) => {
+  // 1. Verify if authorization token is present and is in right format
+  if (req.cookies.jwt) {
+    // If present as cookies (sent by a browser)
+    token = req.cookies.jwt;
+
+    // We don't throw an error, as we are just checking if logged in or not
+    // 2. Verify the token signature and payload data
+
+    // jwt.verify uses a callback but we promisify it so it returns a promise instead
+    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+    // 3. Verify if user still exists in db
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return next();
+    }
+
+    // 4. Verify if user changed his password after JWT issue
+    if (currentUser.changedPasswordDate(decoded.iat)) {
+      return next();
+    }
+
+    // 5. Verify if IP address is same as token
+    if (req.userIp != decoded.address) {
+      return next();
+    }
+
+    // If all checks passed, User is authenticated.
+    res.locals.user = currentUser; // Attach user data as a local on pug template.
+    return next();
+  }
+
   next();
 });
 
