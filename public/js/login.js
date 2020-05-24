@@ -1,6 +1,8 @@
 // Client side js for making calls to login endpoint
+import axios from 'axios';
+import { setAlert } from './alert';
 
-const login = async (email, password) => {
+export const login = async (email, password) => {
   // Use axios to send http requests to server
   try {
     const res = await axios({
@@ -13,19 +15,12 @@ const login = async (email, password) => {
     });
 
     if (res.data.status === 'success') {
-      alert(`Welcome ${res.data.data.user.name}!`);
-      location.assign('/'); // Redirects to home page
+      setAlert('success', 'Logged in successfully!');
+      window.setTimeout(() => {
+        location.assign('/'); // Redirects to home page
+      }, 1500);
     }
   } catch (err) {
-    alert(err.response.data.message);
+    setAlert('error', err.response.data.message);
   }
 };
-
-document.querySelector('.form').addEventListener('submit', (event) => {
-  event.preventDefault();
-
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-
-  login(email, password);
-});

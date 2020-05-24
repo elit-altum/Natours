@@ -39,7 +39,7 @@ const generateJwt = (user, address, res) => {
   });
 };
 
-// 1. For signing in new users
+// 1. FOR SIGNING IN NEW USERS
 exports.signup = catchAsync(async (req, res) => {
   /*
   Only use those properties we want the user to specify. They shouldn't add any properties of
@@ -61,7 +61,7 @@ exports.signup = catchAsync(async (req, res) => {
   generateJwt(newUser, ip, res);
 });
 
-// 2. For logging in existing users
+// 2. FOR LOGGING IN EXISTING USERS
 exports.login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
 
@@ -88,7 +88,19 @@ exports.login = catchAsync(async (req, res) => {
   generateJwt(user, req.userIp, res);
 });
 
-// 3. Middleware for protected routes: User authentication
+// 3. FOR LOGGING USERS OUT
+exports.logout = (req, res, next) => {
+  // 1. Send a manipulated cookie of a short duration to replace the existing jwt
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+  });
+
+  res.status(200).json({
+    status: 'success',
+  });
+};
+
+// 4. MIDDLEWARE FOR PROTECTED ROUTES: USER AUTHENTICATION
 exports.protect = catchAsync(async (req, res, next) => {
   let token = '';
 
@@ -139,44 +151,52 @@ exports.protect = catchAsync(async (req, res, next) => {
   next();
 });
 
-// 4. Middleware to check if a user is logged in (for accessing views)
-exports.isLoggedIn = catchAsync(async (req, res, next) => {
+// 5. MIDDLEWARE TO CHECK IF A USER IS LOGGED IN OR NOT
+//   We don't need catchAsync as we do not want to send any errors just check if logged in or not.
+exports.isLoggedIn = async (req, res, next) => {
   // 1. Verify if authorization token is present and is in right format
   if (req.cookies.jwt) {
-    // If present as cookies (sent by a browser)
-    token = req.cookies.jwt;
+    try {
+      // If present as cookies (sent by a browser)
+      token = req.cookies.jwt;
 
-    // We don't throw an error, as we are just checking if logged in or not
-    // 2. Verify the token signature and payload data
+      // We don't throw an error, as we are just checking if logged in or not
+      // 2. Verify the token signature and payload data
 
-    // jwt.verify uses a callback but we promisify it so it returns a promise instead
-    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+      // jwt.verify uses a callback but we promisify it so it returns a promise instead
+      const decoded = await promisify(jwt.verify)(
+        token,
+        process.env.JWT_SECRET
+      );
 
-    // 3. Verify if user still exists in db
-    const currentUser = await User.findById(decoded.id);
-    if (!currentUser) {
+      // 3. Verify if user still exists in db
+      const currentUser = await User.findById(decoded.id);
+      if (!currentUser) {
+        return next();
+      }
+
+      // 4. Verify if user changed his password after JWT issue
+      if (currentUser.changedPasswordDate(decoded.iat)) {
+        return next();
+      }
+
+      // 5. Verify if IP address is same as token
+      if (req.userIp != decoded.address) {
+        return next();
+      }
+
+      // If all checks passed, User is authenticated.
+      res.locals.user = currentUser; // Attach user data as a local on pug template.
+      return next();
+    } catch (err) {
       return next();
     }
-
-    // 4. Verify if user changed his password after JWT issue
-    if (currentUser.changedPasswordDate(decoded.iat)) {
-      return next();
-    }
-
-    // 5. Verify if IP address is same as token
-    if (req.userIp != decoded.address) {
-      return next();
-    }
-
-    // If all checks passed, User is authenticated.
-    res.locals.user = currentUser; // Attach user data as a local on pug template.
-    return next();
   }
 
   next();
-});
+};
 
-// Function for protected routes: User authorization
+// 6. FUNCTION FOR PROTECTING ROUTES: USER AUTHORIZATION
 exports.restrictTo = (...roles) => {
   // Returns a middleware fn to check if a user role matches or not
   return (req, res, next) => {
@@ -193,7 +213,7 @@ exports.restrictTo = (...roles) => {
   };
 };
 
-// For generating a password reset request
+// 7. FUNCTION FOR GENERATING A PASSWORD RESET REQUEST
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   // 1. Check if user is in db through his email
   const user = await User.findOne({ email: req.body.email });
@@ -237,7 +257,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   }
 });
 
-// For resetting user password
+// 8. FOR RESETTING USER PASSWORD
 exports.resetPassword = catchAsync(async (req, res, next) => {
   const resetToken = req.params.token;
   const hashedToken = crypto
@@ -267,7 +287,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   generateJwt(user, req.userIp, res);
 });
 
-// For changing user password on his request
+// 9. CHANGING USER PASSWORD ON HIS REQUEST
 exports.updatePassword = catchAsync(async (req, res, next) => {
   // 1. Get POSTed user
   const user = await User.findById(req.user._id).select('+password');

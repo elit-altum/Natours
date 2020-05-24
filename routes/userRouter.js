@@ -9,6 +9,7 @@ const router = express.Router();
 // Routes for authentication
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
+router.get('/logout', authController.protect, authController.logout);
 
 // Routes for password reset
 router.post('/forgotPassword', authController.forgotPassword);

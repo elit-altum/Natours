@@ -1,0 +1,21 @@
+// For logging out a user
+import axios from 'axios';
+import { setAlert } from './alert';
+
+export const logout = async () => {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: 'http://localhost:3000/api/v1/users/logout',
+    });
+
+    if (res.data.status === 'success') {
+      setAlert('success', 'Logged out successfully!');
+      location.reload(true);
+    }
+    console.log(res);
+  } catch (err) {
+    console.log(err);
+    setAlert('error', 'Could not log out. Try again!');
+  }
+};
