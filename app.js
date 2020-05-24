@@ -77,12 +77,9 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Custom middleware for attaching current time and user ip to requests
+// Custom middleware for attaching current time to requests
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
-
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  req.userIp = ip;
 
   next();
 });

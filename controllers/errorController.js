@@ -46,28 +46,52 @@ const handleJWTExpire = () => {
 };
 
 // Sending comprehensive errors for developers in dev environment
-const sendErrorDev = (err, res) => {
-  res.status(err.statusCode).json({
-    status: err.status,
-    message: err.message,
-    error: err,
-    stack: err.stack,
-  });
-};
-
-// Sending minimal errors to client in production
-const sendErrorProd = (err, res) => {
-  // For operational errors - errors we trust
-  if (err.isOperational) {
+const sendErrorDev = (err, req, res) => {
+  // A. If error occurs through API means like using Postman
+  if (req.originalUrl.startsWith('/api')) {
     res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
+      error: err,
+      stack: err.stack,
     });
   } else {
-    // For uncaught errors - bugs which we can't rectify
-    res.status(err.statusCode).json({
+    // B. If error occurs while using website
+    res.status(err.statusCode).render('error', {
+      title: err.status,
+      msg: err.message,
+    });
+  }
+};
+
+// Sending minimal errors to client in production
+const sendErrorProd = (err, req, res) => {
+  // A. FOR THE API
+  if (req.originalUrl.startsWith('/api')) {
+    // For operational errors - errors we trust
+    if (err.isOperational) {
+      return res.status(err.statusCode).json({
+        status: err.status,
+        message: err.message,
+      });
+    }
+    // For uncaught errors - bugs which we can't rectify don't send complete sensitive info
+    return res.status(err.statusCode).json({
       status: 500,
       message: 'Something went very wrong!',
+    });
+  } else {
+    // B. FOR THE WEBSITE
+    if (err.isOperational) {
+      return res.status(err.statusCode).render('error', {
+        title: err.status,
+        msg: err.message,
+      });
+    }
+    // For uncaught errors - bugs which we can't rectify don't send complete sensitive info
+    return res.status(err.statusCode).render('error', {
+      title: err.status,
+      msg: 'Please try again later.',
     });
   }
 };
@@ -79,7 +103,7 @@ module.exports = (err, req, res, next) => {
 
   // Ends the req-res cycle by returning an error to client
   if (process.env.NODE_ENV == 'development') {
-    sendErrorDev(err, res);
+    sendErrorDev(err, req, res);
   } else {
     // Error copy
     let errorCopy = { ...err };
@@ -97,8 +121,8 @@ module.exports = (err, req, res, next) => {
       errorCopy = handleJWTExpire();
     } else {
       // every other error which we don't catch explicitly
-      return sendErrorProd(err, res);
+      return sendErrorProd(err, req, res);
     }
-    sendErrorProd(errorCopy, res);
+    sendErrorProd(errorCopy, req, res);
   }
 };

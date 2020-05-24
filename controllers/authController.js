@@ -10,9 +10,9 @@ const AppError = require('../utils/appError');
 const sendEmail = require('../utils/email');
 
 // Generates a JWT
-const generateJwt = (user, address, res) => {
+const generateJwt = (user, res) => {
   // 1. Creates a JWT
-  const token = jwt.sign({ id: user._id, address }, process.env.JWT_SECRET, {
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
@@ -55,10 +55,8 @@ exports.signup = catchAsync(async (req, res) => {
     passwordConfirm: req.body.passwordConfirm,
   });
 
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
   // Issue a JWT after user signs up
-  generateJwt(newUser, ip, res);
+  generateJwt(newUser, res);
 });
 
 // 2. FOR LOGGING IN EXISTING USERS
@@ -85,7 +83,7 @@ exports.login = catchAsync(async (req, res) => {
   }
 
   // Generates and sends JWT to the user
-  generateJwt(user, req.userIp, res);
+  generateJwt(user, res);
 });
 
 // 3. FOR LOGGING USERS OUT
@@ -141,13 +139,9 @@ exports.protect = catchAsync(async (req, res, next) => {
     );
   }
 
-  // 5. Verify if IP address is same as token
-  if (req.userIp != decoded.address) {
-    throw new AppError('This session is not valid. Please login again!');
-  }
-
   // If all checks passed, User is authenticated.
   req.user = currentUser; // Attach user data to request if someone wants to use.
+  res.locals.user = currentUser;
   next();
 });
 
@@ -177,11 +171,6 @@ exports.isLoggedIn = async (req, res, next) => {
 
       // 4. Verify if user changed his password after JWT issue
       if (currentUser.changedPasswordDate(decoded.iat)) {
-        return next();
-      }
-
-      // 5. Verify if IP address is same as token
-      if (req.userIp != decoded.address) {
         return next();
       }
 
@@ -284,7 +273,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   await user.save(); // Mongoose validators will check if password == passwordConfirm
 
   // 3. Log in the user, send back a JWT
-  generateJwt(user, req.userIp, res);
+  generateJwt(user, res);
 });
 
 // 9. CHANGING USER PASSWORD ON HIS REQUEST
@@ -303,9 +292,6 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 
   await user.save(); // always use save() as update() does not run validators!
 
-  // 4. Send is new JWT for login
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
   // Generates JWT for the user
-  generateJwt(user, req.userIp, res);
+  generateJwt(user, res);
 });

@@ -1,5 +1,6 @@
 // Controllers for serving static assets using pug
 const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
 const Tour = require('../models/tourModel');
 
 exports.getOverview = catchAsync(async (req, res, next) => {
@@ -20,6 +21,10 @@ exports.getTour = catchAsync(async (req, res, next) => {
     fields: 'review user rating',
   });
 
+  if (!tour) {
+    throw new AppError('No tour found!', 400);
+  }
+
   // 2. Build and send back the template
   res.status(200).render('tour', {
     title: tour.name,
@@ -30,5 +35,11 @@ exports.getTour = catchAsync(async (req, res, next) => {
 exports.login = catchAsync(async (req, res, next) => {
   res.status(200).render('login', {
     title: 'Login',
+  });
+});
+
+exports.getAccount = catchAsync(async (req, res, next) => {
+  res.status(200).render('account', {
+    title: 'My account',
   });
 });
