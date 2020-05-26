@@ -2,7 +2,7 @@ import '@babel/polyfill';
 import { login } from './login';
 import { logout } from './logout';
 import { displayMap } from './mapbox';
-import { updateDetails } from './updateSettings';
+import { updateDetails } from './updateDetails';
 
 const loginForm = document.querySelector('.form--login');
 const logoutButton = document.querySelector('.nav__el--logout');
@@ -33,10 +33,14 @@ if (logoutButton) {
 if (settingsForm) {
   settingsForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const email = document.getElementById('email').value;
-    const name = document.getElementById('name').value;
 
-    updateDetails({ name, email }, 'settings');
+    const form = new FormData();
+
+    form.append('email', document.getElementById('email').value);
+    form.append('name', document.getElementById('name').value);
+    form.append('photo', document.getElementById('photo').files[0]);
+
+    updateDetails(form, 'settings');
   });
 }
 

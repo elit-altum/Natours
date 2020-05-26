@@ -26,7 +26,13 @@ router.patch('/updatePassword', authController.updatePassword);
 // Deleting a user
 router.route('/deleteMe').delete(userController.deleteMe);
 // Route chaining for updating personal info
-router.route('/updateMe').patch(userController.updateMe);
+router
+  .route('/updateMe')
+  .patch(
+    userController.uploadUserPhoto,
+    userController.resizeUserImage,
+    userController.updateMe
+  );
 // Get user data of logged in user
 router.route('/me').get(userController.getMe);
 

@@ -1,4 +1,6 @@
 // Functions for handling user routes
+const multer = require('multer');
+const sharp = require('sharp');
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
@@ -25,6 +27,57 @@ exports.getUser = factory.getOne(User);
 exports.updateUser = factory.updateOne(User);
 // For actually deleting a user from db (admin action only)
 exports.deleteUser = factory.deleteOne(User);
+
+// Multer for creating middleware for uploading user images directly in file
+// const multerStorage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, 'public/img/users');
+//   },
+//   filename: (req, file, cb) => {
+//     const ext = file.mimetype.split('/')[1];
+
+//     // req.user is attached by protect route
+//     // for only unique names: user-(user.id)-(timestamp).(extension)
+//     cb(null, `user-${req.user.id}-${Date.now()}.${ext}`);
+//   },
+// });
+
+// Multer for creating a memory buffer to process image before saving
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true);
+  } else {
+    cb(new AppError('Please upload images only!', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+  limits: {
+    fileSize: 1000000, // 1MB only
+  },
+});
+
+exports.uploadUserPhoto = upload.single('photo');
+
+// Resizing user image using sharp
+exports.resizeUserImage = (req, res, next) => {
+  if (!req.file) return next();
+
+  req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+
+  // Multer will store a buffer/encoded version of image on req.file.buffer
+  sharp(req.file.buffer)
+    .resize(500, 500)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/users/${req.file.filename}`);
+
+  next();
+};
 
 // Redirect to /signup page
 exports.createUser = (req, res) => {
@@ -58,6 +111,11 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 
   // 2. Filter out only those fields which we want user to update
   const updateObj = filterObject(req.body, 'name', 'email');
+
+  // If user has updated his image
+  if (req.file) {
+    updateObj.photo = req.file.filename;
+  }
 
   // 3. Update the user
   // For un-sensitive data we use .update()
