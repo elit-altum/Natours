@@ -10,6 +10,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 
 // Custom class for making more descriptive errors
 const AppError = require('./utils/appError');
@@ -76,6 +77,9 @@ app.use(
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
+
+// Compress requests and responses
+app.use(compression());
 
 // Custom middleware for attaching current time to requests
 app.use((req, res, next) => {

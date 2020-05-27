@@ -1,4 +1,6 @@
 // Functions for handling tour routes
+const multer = require('multer');
+const sharp = require('sharp');
 
 // Imports the tour model, it is a reference to entire tours collection
 const Tour = require('../models/tourModel');
@@ -32,6 +34,63 @@ exports.deleteTour = factory.deleteOne(Tour);
 exports.createTour = factory.createOne(Tour);
 // Gets a tour by the provided Mongo ObjectID
 exports.getTour = factory.getOne(Tour, { path: 'reviews' });
+
+// Multer for processing tour image uploads
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    return cb(null, true);
+  }
+
+  cb(new AppError('Please provide images only!', 400), false);
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+// For allowing 1 cover image from imageCover and 3 tour images from images
+exports.uploadTourImages = upload.fields([
+  { name: 'imageCover', maxCount: 1 },
+  { name: 'images', maxCount: 3 },
+]);
+
+// Image processing
+exports.resizeTourImages = async (req, res, next) => {
+  if (!req.files.imageCover || !req.files.images) return next();
+
+  // 1. For image cover
+
+  // attach image name to body for update via factory fn.
+  req.body.imageCover = `tour-${req.params.id}-${Date.now()}.jpeg`;
+
+  await sharp(req.files.imageCover[0].buffer)
+    .resize(2000, 1333)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/tours/${req.body.imageCover}`);
+
+  // 2. For images
+  req.body.images = [];
+
+  const imagePromises = req.files.images.map(async (file, index) => {
+    let fileName = `tour-${req.params.id}-${Date.now()}-${index + 1}.jpeg`;
+    await sharp(file.buffer)
+      .resize(2000, 1333)
+      .toFormat('jpeg')
+      .jpeg({ quality: 90 })
+      .toFile(`public/img/tours/${fileName}`);
+
+    req.body.images.push(fileName);
+  });
+
+  // await imagePromises
+  await Promise.all(imagePromises);
+
+  next();
+};
 
 // Aggregation pipelines to get stats on documents
 exports.getTourStats = catchAsync(async (req, res) => {

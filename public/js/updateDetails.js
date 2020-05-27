@@ -8,7 +8,7 @@ export const updateDetails = async (data, type) => {
   try {
     const res = await axios({
       method: 'PATCH',
-      url: `http://localhost:3000/api/v1/users/${url}`,
+      url: `/api/v1/users/${url}`,
       data,
     });
     if (res.data.status === 'success') {
@@ -18,7 +18,6 @@ export const updateDetails = async (data, type) => {
       }, 1500);
     }
   } catch (err) {
-    console.log(err.response);
     setAlert('error', err.response.data.message);
   }
 };
